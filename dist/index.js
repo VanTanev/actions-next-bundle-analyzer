@@ -127805,6 +127805,9 @@ function prettyBytes(number, options) {
 
 
 
+const SMALL_DIFF = 1000;
+const LARGE_DIFF = 5000;
+const VERY_LARGE_DIFF = 20000;
 function getStaticPagesBundleSizes(workingDir) {
     const manifest = loadBuildManifest(workingDir);
     return getPageSizesFromManifest(manifest, workingDir);
@@ -127958,16 +127961,25 @@ function getPageChangeInfo(referenceBundleSizes, bundleSizes) {
     return addedAndChanged.concat(removed);
 }
 function getSignificant(rows) {
-    return rows.filter(({ type, diff }) => type !== 'changed' || diff >= 1000 || diff <= -1000);
+    return rows.filter(({ type, diff }) => type !== 'changed' || Math.abs(diff) >= SMALL_DIFF);
 }
 function formatTable(name, rows) {
     const rowStrs = rows.map(({ page, type, size, diff }) => {
-        const diffStr = type === 'changed' ? prettyBytes(diff, { signed: true }) : type;
+        const diffStr = type === 'changed'
+            // example output:
+            // +3.3KB (🟡 +10.33%)
+            ? `${prettyBytes(diff, { signed: true })} (${diff < 0
+                ? '🟢'
+                : diff > VERY_LARGE_DIFF
+                    ? '💥'
+                    : diff > LARGE_DIFF
+                        ? '🔴' : '🟡'} ${(diff / size * 100).toFixed(2)}%)`
+            : type;
         return `| \`${page}\` | ${prettyBytes(size)} | ${diffStr} |`;
     });
     return `| ${name} | Size (gzipped) | Diff |
-  | --- | --- | --- |
-  ${rowStrs.join('\n')}`;
+| --- | --- | --- |
+${rowStrs.join('\n')}`;
 }
 function formatTableNoDiff(name, rows) {
     const rowStrs = rows.map(({ page, size }) => {
@@ -128000,7 +128012,7 @@ async function createOrReplaceComment({ octokit, issueNumber, title, shaInfo, ap
         issueNumber,
         text: title,
     });
-    const body = formatTextFragments(title, '<details>', `<summary>${shaInfo}</summary>`, appRoutesTable, pagesRoutesTable, dynamicTable, '</details>', !(pagesRoutesTable === null || pagesRoutesTable === void 0 ? void 0 : pagesRoutesTable.trim()) && !(dynamicTable === null || dynamicTable === void 0 ? void 0 : dynamicTable.trim()) && !(appRoutesTable === null || appRoutesTable === void 0 ? void 0 : appRoutesTable.trim())
+    const body = formatTextFragments(title, shaInfo, appRoutesTable, pagesRoutesTable, dynamicTable, !(pagesRoutesTable === null || pagesRoutesTable === void 0 ? void 0 : pagesRoutesTable.trim()) && !(dynamicTable === null || dynamicTable === void 0 ? void 0 : dynamicTable.trim()) && !(appRoutesTable === null || appRoutesTable === void 0 ? void 0 : appRoutesTable.trim())
         ? FALLBACK_COMPARISON_TEXT
         : null);
     if (existingComment) {
