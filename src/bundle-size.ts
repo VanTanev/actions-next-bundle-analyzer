@@ -17,6 +17,10 @@ type ReactLoadableManifest = Record<string, Next10Chunks | Next12Chunks>;
 type Next10Chunks = { id: string; file: string }[];
 type Next12Chunks = { id: string; files: string[] };
 
+const SMALL_DIFF = 1_000;
+const LARGE_DIFF = 5_000;
+const VERY_LARGE_DIFF = 20_000;
+
 export type PageBundleSizes = { page: string; size: number }[];
 
 export function getStaticPagesBundleSizes(workingDir: string): PageBundleSizes {
@@ -249,18 +253,29 @@ function getPageChangeInfo(
 }
 
 function getSignificant(rows: PageChangeInfo[]): PageChangeInfo[] {
-  return rows.filter(({ type, diff }) => type !== 'changed' || diff >= 1000 || diff <= -1000);
+  return rows.filter(({ type, diff }) => type !== 'changed' || Math.abs(diff) >= SMALL_DIFF);
 }
 
-function formatTable(name: string, rows: PageChangeInfo[]): string {
+export function formatTable(name: string, rows: PageChangeInfo[]): string {
   const rowStrs = rows.map(({ page, type, size, diff }) => {
-    const diffStr = type === 'changed' ? prettyBytes(diff, { signed: true }) : type;
+    const diffStr = type === 'changed'
+        // example output:
+        // +3.3KB (🟡 +10.33%)
+        ? `${prettyBytes(diff, { signed: true })} (${
+            diff < 0
+                ? '🟢'
+                : diff > VERY_LARGE_DIFF
+                    ? '💥'
+                    : diff > LARGE_DIFF
+                        ? '🔴': '🟡'
+        } ${(diff / size * 100).toFixed(2)}%)`
+        : type;
     return `| \`${page}\` | ${prettyBytes(size)} | ${diffStr} |`;
   });
 
   return `| ${name} | Size (gzipped) | Diff |
-  | --- | --- | --- |
-  ${rowStrs.join('\n')}`;
+| --- | --- | --- |
+${rowStrs.join('\n')}`;
 }
 
 function formatTableNoDiff(name: string, rows: PageChangeInfo[]): string {
