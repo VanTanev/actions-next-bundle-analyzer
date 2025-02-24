@@ -127975,7 +127975,7 @@ function formatTable(name, rows) {
                     : diff > LARGE_DIFF
                         ? '🔴' : '🟡'} ${(diff / size * 100).toFixed(2)}%)`
             : type;
-        return `| \`${page}\` | ${prettyBytes(size)} | ${diffStr} |`;
+        return `| \`${page}\` | ${prettyBytes(size)} | ${diffStr.replaceAll(' ', '&nbsp;')} |`;
     });
     return `| ${name} | Size (gzipped) | Diff |
 | --- | --- | --- |

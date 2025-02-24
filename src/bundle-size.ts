@@ -270,7 +270,7 @@ export function formatTable(name: string, rows: PageChangeInfo[]): string {
                         ? '🔴': '🟡'
         } ${(diff / size * 100).toFixed(2)}%)`
         : type;
-    return `| \`${page}\` | ${prettyBytes(size)} | ${diffStr} |`;
+    return `| \`${page}\` | ${prettyBytes(size)} | ${diffStr.replaceAll(' ', '&nbsp;')} |`;
   });
 
   return `| ${name} | Size (gzipped) | Diff |
